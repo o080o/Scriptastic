@@ -1,0 +1,3 @@
+LOCAL_CFLAGS := -w
+include $(call all-subdir-makefiles)
+
