@@ -29,7 +29,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name="sk.kottman.androlua.Main">
+        <activity android:name="com.o080o.scriptastic.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
@@ -37,6 +37,7 @@
             </intent-filter>
         </activity>
         <activity android:name="sk.kottman.androlua.LuaActivity" />
+        <activity android:name="sk.kottman.androlua.Main" />
         <service android:name="sk.kottman.androlua.Lua" android:permission="android.permission.INTERNET"/>
 
     </application>

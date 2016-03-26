@@ -1,17 +1,20 @@
 package sk.kottman.androlua;
 
 import android.app.Activity;
+import android.app.Notification;
 import android.app.Service;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.res.AssetManager;
+import android.graphics.BitmapFactory;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.StrictMode;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.*;
 import java.net.*;
@@ -33,7 +36,7 @@ public class Lua extends Service {
 	
 	// the binder just returns this service...
 	public class LocalBinder extends Binder {
-		Lua getService() {
+		public Lua getService() {
 			return Lua.this;
 		}
 	}
@@ -141,13 +144,47 @@ public class Lua extends Service {
 		handler = new Handler();
 		StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.LAX);
 		log("starting Lua service");
+		boolean start_tcpserver = intent.getBooleanExtra("LUA_START_TCP", false);
 		if (L == null) {
 			main_instance = this;
-			L = newState(true);
-			setGlobal("service",this);
+			L = newState(start_tcpserver);
+			setGlobal("service", this);
+
+			String src = intent.getStringExtra("LUA_INITCODE");
+			if (src != null) {
+				safeEvalLua(src, "init");
+			}
 		}
+
+		String title = intent.getStringExtra("LUA_SERVICE_TITLE");
+		if (title==null) {
+			title=getPackageName();
+		}
+
+		int icon = intent.getIntExtra("LUA_SERVICE_ICON", 0);
+		int largeIcon = intent.getIntExtra("LUA_SERVICE_LARGE_ICON", 0);
+		String content;
+		if (serverThread==null){
+			content = "lua service running";
+		}else{
+			content = "lua service running (port "+LISTEN_PORT+")";
+		}
+
+		NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
+		builder.setContentTitle(title);
+		builder.setContentText(content);
+		builder.setSmallIcon(icon);
+		builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), largeIcon, new BitmapFactory.Options()));
+
+
+		Notification notification = new NotificationCompat.Builder(this)
+				.setContentTitle(title)
+				.setContentText(content)
+				.setSmallIcon(icon)
+				.build();
+		startForeground(5, notification);
 		
-		return START_STICKY;
+		return START_REDELIVER_INTENT;
 	}
 
 	// currently this is just so that the main activity knows when the service is up...
@@ -156,7 +193,11 @@ public class Lua extends Service {
 	public IBinder onBind(Intent intent) {
 		return binder; 
 	}
-	
+
+	public void restartLuaState(){
+		L = newState(false);
+		setGlobal("service",this);
+	}
 	public void launchLuaActivity(Context context, String mod, Object arg) {
 		boolean fromActivity = context != null;
 		if (! fromActivity) {
@@ -181,7 +222,7 @@ public class Lua extends Service {
 			intent.putExtra("LUA_MODULE_ARG", lobj.getRef());
 		}
 		context.startActivity(intent);
-	}	
+	}
 	
 	public Object launchLuaView(Context context, Object o) {
 		return new LuaView(context,this,o);
@@ -231,7 +272,7 @@ public class Lua extends Service {
 			printToString = true;
 			ok = L.pcall(0, 0, -2);
 			printToString = false;
-			if (ok == 0) {				 
+			if (ok == 0) {
 				String res = output.toString();
 				output.setLength(0);
 				return res;
@@ -257,19 +298,19 @@ public class Lua extends Service {
 	
 	public static void bind(Activity a, ServiceConnection sc) {
 		Intent luaIntent = new Intent(a,Lua.class);
-		ComponentName name = a.startService(luaIntent);
-		if (name == null) {
-			Log.d("lua","unable to start Lua service!");
-		} else {
-			Log.d("lua","started service " + name.toString());
+		//ComponentName name = a.startService(luaIntent);
+		//if (name == null) {
+		//	Log.d("lua","unable to start Lua service!");
+		//} else {
+		//	Log.d("lua","started service " + name.toString());
 			a.bindService(luaIntent,sc,BIND_AUTO_CREATE);
-		}				    		
+		//}
 		
 	}
 	
 	public static void unbind(Activity a, ServiceConnection sc) {
-		Intent luaIntent = new Intent(a,Lua.class);
-		a.stopService(luaIntent);
+		//Intent luaIntent = new Intent(a,Lua.class);
+		//a.stopService(luaIntent);
 		a.unbindService(sc);		
 	}
 	
@@ -288,7 +329,7 @@ public class Lua extends Service {
 		return res;
 	}	
 	
-	String safeEvalLua(String src,String chunkName) {
+	public String safeEvalLua(String src,String chunkName) {
 		String res = null;	
 		try {
 			res = evalLua(src,chunkName);
@@ -312,7 +353,23 @@ public class Lua extends Service {
 				log("Server started on port " + LISTEN_PORT);
 				while (!stopped) {
 					client = server.accept();					
-					Log.d("client","client accepted");
+					Log.d("client", "client accepted");
+
+					handler.post(new Runnable() {
+						public void run() {
+
+							Toast.makeText(main_instance, main_instance.getPackageName() + ":\n\tclient connected",
+									Toast.LENGTH_LONG).show();
+							/*
+							String res = safeEvalLua(s, chunkName);
+							res = res.replace('\n', REPLACE);
+							out.println(res);
+							out.flush();
+							*/
+						}
+					});
+
+
 					BufferedReader in = new BufferedReader(
 							new InputStreamReader(client.getInputStream()));
 					final PrintWriter out = new PrintWriter(client.getOutputStream());

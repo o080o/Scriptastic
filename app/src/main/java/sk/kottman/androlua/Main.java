@@ -6,7 +6,7 @@ public class Main extends LuaActivity  {
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
-		setLuaModule("main");
+		setLuaModule("MainActivity");
 		super.onCreate(savedInstanceState);
 	}
 	
