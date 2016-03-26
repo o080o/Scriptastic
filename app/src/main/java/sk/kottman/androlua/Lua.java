@@ -12,6 +12,7 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.StrictMode;
+import android.os.Vibrator;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
@@ -360,12 +361,10 @@ public class Lua extends Service {
 
 							Toast.makeText(main_instance, main_instance.getPackageName() + ":\n\tclient connected",
 									Toast.LENGTH_LONG).show();
-							/*
-							String res = safeEvalLua(s, chunkName);
-							res = res.replace('\n', REPLACE);
-							out.println(res);
-							out.flush();
-							*/
+							// Get instance of Vibrator from current Context
+							Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+							// Vibrate for 400 milliseconds
+							v.vibrate(400);
 						}
 					});
 
