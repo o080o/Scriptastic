@@ -40,6 +40,7 @@
         <activity android:name="sk.kottman.androlua.LuaActivity" />
         <activity android:name="sk.kottman.androlua.Main" />
         <service android:name="sk.kottman.androlua.Lua" android:permission="android.permission.INTERNET"/>
+        <service android:name="com.o080o.scriptastic.LuaService" android:permission="android.permission.INTERNET"/>
 
     </application>
 

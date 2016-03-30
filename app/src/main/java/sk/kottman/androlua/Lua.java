@@ -228,7 +228,7 @@ public class Lua extends Service {
 	public Object launchLuaView(Context context, Object o) {
 		return new LuaView(context,this,o);
 	}
-	
+
 	public Object createLuaListAdapter(Object me, Object o) {
 		return new LuaListAdapter(this,me,o);
 	}
@@ -246,7 +246,7 @@ public class Lua extends Service {
 	public void onDestroy() {
 		super.onDestroy();
 		log("destroying Lua service");
-		serverThread.close(); 
+		serverThread.close();
 		L.close();
 		L = null;
 	}
