@@ -1,6 +1,6 @@
 package.path = package.path .. ";/sdcard/scriptastic/?.lua"
 function loadFromSDCard()
-	return require('start')
+	return require('main')
 end
 local ok,mod=pcall(loadFromSDCard)
 if ok and mod then

@@ -12,51 +12,34 @@ import android.util.Log;
 
 import org.keplerproject.luajava.LuaObject;
 
+import java.io.Serializable;
+
 import sk.kottman.androlua.*;
 
 
-public class MainActivity extends Activity {
-    LuaService.LuaBinder luaService;
-    ServiceConnection connection;
-    LuaVM lua;
-
+public class MainActivity extends LuaActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        //LuaObject module=lua.safeEval("return {}", ".");
+        //modify the intent that started this activity
+        //Intent thisIntent = getIntent();
+        //thisIntent.putExtra("LUA_SELF", module);
+
         //start the Lua service to handle the VM in the background
-
         Intent serviceIntent = new Intent(this, LuaService.class);
-        serviceIntent.putExtra("LUA_INITCODE", "package.path = package.path .. ';/sdcard/scriptastic/?.lua'");
-        serviceIntent.putExtra("LUA_SERVICE_TITLE", "Scriptastic");
-        serviceIntent.putExtra("LUA_SERVICE_ICON", R.drawable.lua_notification_icon);
-        serviceIntent.putExtra("LUA_SERVICE_LARGE_ICON", R.mipmap.ic_launcher);
-
-
         startService(serviceIntent);
-        connection = new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-                Log.d("scriptastic", "service connected!");
-
-                luaService = (LuaService.LuaBinder)service;
-                lua = luaService.getLuaVM();
-                lua.addPackagePath("/sdcard/scriptastic");
-                LuaObject t = lua.safeEval("return require('MainActivity')", "init");
-                lua.safeEval("service:log('hello from lua')", "init");
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-
-            }
-        };
-        bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE);
-
+        self = null;
         super.onCreate(savedInstanceState);
     }
 
     @Override
-    public void onDestroy(){
-        unbindService(connection);
-        super.onDestroy();
+    public void onServiceConnected(ComponentName name, IBinder service) {
+        super.onServiceConnected(name, service);
+        ((LuaService.LuaBinder)service).startServer(3333); //start an interactive shell server (telnet works)
+        lua.addPackagePath("/sdcard/scriptastic");
+        lua.safeEval("package.loaded = {}", "."); //force reload all packages.
+        LuaObject t = lua.safeEval("return require('MainActivity')", "init");
+        lua.safeEval("service:log('hello from lua')", "init");
+        setSelf(t);
     }
 }

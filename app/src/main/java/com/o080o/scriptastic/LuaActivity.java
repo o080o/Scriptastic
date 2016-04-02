@@ -22,15 +22,24 @@ import org.keplerproject.luajava.LuaObject;
 public class LuaActivity extends Activity implements ServiceConnection{
 
     public LuaObject self;
-    public LuaVM lua;
+    protected LuaVM lua;
+    private String modName;
+    private String modKey;
 
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Intent serviceIntent = new Intent(this, LuaService.class);
-        bindService(serviceIntent, this, Context.BIND_AUTO_CREATE);
+        Intent thisIntent = getIntent();
+        modName = thisIntent.getStringExtra("LUA_MODNAME");
+        modKey = thisIntent.getStringExtra("LUA_MODKEY");
+
+
+        if(lua==null) { //should be *always*
+            Intent serviceIntent = new Intent(this, LuaService.class);
+            bindService(serviceIntent, this, Context.BIND_AUTO_CREATE);
+        }
     }
 
     @Override
@@ -130,9 +139,32 @@ public class LuaActivity extends Activity implements ServiceConnection{
 
     public void onServiceConnected(ComponentName name, IBinder iservice) {
         lua = ((LuaService.LuaBinder)iservice).getLuaVM();
-        self = lua.safeEval("return require'" + name + "'", ".");
+        Log.d("LuaActivity", "LuaActivity connected");
+        if (modKey!=null){
+            Log.d("LuaActivity", modKey);
+            self = lua.fetch(modKey);
+            Log.d("LuaActivity", self.toString());
+        }
+        if (modName!=null){
+            self = lua.require(modName);
+        }
+        if (self!=null){
+            setSelf(self);
+        }
+    }
+
+    public void onServiceDisconnected(ComponentName name) {
+        this.lua = null;
+    }
+
+    public void setSelf(LuaObject newSelf){
+        self = newSelf;
         if (self==null){
-            finish();
+            Log.d("lua", "Can't use nil value as a LuaActivity");
+            return;
+        }
+        if (lua==null){
+            Log.d("lua", "Can't set self of LuaActivity before LuaService connected");
             return;
         }
 
@@ -148,10 +180,6 @@ public class LuaActivity extends Activity implements ServiceConnection{
 
         lua.invokeMethod(self, "onStart");
         lua.invokeMethod(self, "onResume");
-    }
-
-    public void onServiceDisconnected(ComponentName name) {
-        this.lua = null;
     }
 
 }
