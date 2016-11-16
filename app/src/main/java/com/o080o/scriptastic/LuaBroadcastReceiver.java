@@ -5,19 +5,22 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import org.keplerproject.luajava.LuaObject;
+
 /**
  * Created by o080o on 3/25/16.
  */
 public class LuaBroadcastReceiver extends BroadcastReceiver {
-    LuaBroadcastReceiverTask task;
-    public LuaBroadcastReceiver(LuaBroadcastReceiverTask t) {
+    LuaObject func;
+    public LuaBroadcastReceiver(LuaObject func) {
         super();
-        this.task = t;
+        this.func = func;
     }
     @Override
     public void onReceive(Context context, Intent intent) {
+        Log.d("scriptastic", "broadcast receiver execute");
         try {
-            this.task.run(context, intent);
+            func.call(new Object[]{context, intent});
         }catch(Exception e){
             Log.d("scriptastic", e.toString()+e.getMessage());
         }

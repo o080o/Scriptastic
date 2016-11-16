@@ -13,8 +13,7 @@ public class BootupBroadcastReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         //start the Lua service to handle the VM in the background
-        Intent serviceIntent = new Intent(context, Lua.class);
-        serviceIntent.putExtra("LUA_INITCODE", "package.path = package.path .. ';/sdcard/scriptastic/?.lua'");
+        Intent serviceIntent = new Intent(context, LuaService.class);
         context.startService(serviceIntent);
     }
 }

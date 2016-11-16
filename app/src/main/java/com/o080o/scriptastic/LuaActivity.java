@@ -23,8 +23,11 @@ public class LuaActivity extends Activity implements ServiceConnection{
 
     public LuaObject self;
     protected LuaVM lua;
+    protected LuaService.LuaBinder binder;
     private String modName;
     private String modKey;
+    private int objRef = LuaVM.NULLREF;
+    private String objRefStr;
 
     /** Called when the activity is first created. */
     @Override
@@ -34,9 +37,13 @@ public class LuaActivity extends Activity implements ServiceConnection{
         Intent thisIntent = getIntent();
         modName = thisIntent.getStringExtra("LUA_MODNAME");
         modKey = thisIntent.getStringExtra("LUA_MODKEY");
+        //objRef = thisIntent.getIntExtra("LUA_OBJREF", LuaVM.NULLREF);
+        objRefStr = thisIntent.getStringExtra("LUA_OBJREF");    //lua can't find the right putExtra method for numbers. sometimes uses bytes instead.
+        if (objRefStr!=null) {                                  // to avoid that, we will explicitly typecast to/from strings to avoid overloaded methods
+            objRef = new Integer(objRefStr);
+        }
 
-
-        if(lua==null) { //should be *always*
+        if(lua==null) { //should *always* happen
             Intent serviceIntent = new Intent(this, LuaService.class);
             bindService(serviceIntent, this, Context.BIND_AUTO_CREATE);
         }
@@ -138,7 +145,9 @@ public class LuaActivity extends Activity implements ServiceConnection{
     }
 
     public void onServiceConnected(ComponentName name, IBinder iservice) {
-        lua = ((LuaService.LuaBinder)iservice).getLuaVM();
+        binder = (LuaService.LuaBinder)iservice;
+        lua = binder.getLuaVM();
+
         Log.d("LuaActivity", "LuaActivity connected");
         if (modKey!=null){
             Log.d("LuaActivity", modKey);
@@ -146,11 +155,15 @@ public class LuaActivity extends Activity implements ServiceConnection{
             Log.d("LuaActivity", self.toString());
         }
         if (modName!=null){
-            self = lua.require(modName);
+            Log.d("LuaActivity", modName);
+            self = lua.safeEval("return require'" + modName + "'", "tmp");
         }
-        if (self!=null){
-            setSelf(self);
+        if (objRef!=LuaVM.NULLREF){
+            Log.d("LuaActivity", new Integer(objRef).toString());
+            self = lua.objectFromReference(objRef);
+            lua.releaseRef(objRef);
         }
+        setSelf(self);
     }
 
     public void onServiceDisconnected(ComponentName name) {
@@ -167,6 +180,11 @@ public class LuaActivity extends Activity implements ServiceConnection{
             Log.d("lua", "Can't set self of LuaActivity before LuaService connected");
             return;
         }
+
+        try {
+            //self.setField("activity", this);
+            self.setField("service", binder);
+        }catch (LuaException e){Log.d("lua", "could not set fields of 'self':" + e.getMessage());}
 
         Object view = lua.invokeMethod(self, "onCreate", this);
         if (view instanceof View) {

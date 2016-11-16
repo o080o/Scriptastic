@@ -32,14 +32,22 @@ public class MainActivity extends LuaActivity {
         super.onCreate(savedInstanceState);
     }
 
+    public void resetVM(){
+        binder.stopServer();
+        binder.getService().resetVM();
+        lua = null;
+        self = null;
+        unbindService(this);
+        Intent serviceIntent = new Intent(this, LuaService.class);
+        bindService(serviceIntent, this, 0);
+    }
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
         super.onServiceConnected(name, service);
         ((LuaService.LuaBinder)service).startServer(3333); //start an interactive shell server (telnet works)
         lua.addPackagePath("/sdcard/scriptastic");
-        lua.safeEval("package.loaded = {}", "."); //force reload all packages.
+        //lua.safeEval("package.loaded = {}", "."); //force reload all packages. (doesn't work...)
         LuaObject t = lua.safeEval("return require('MainActivity')", "init");
-        lua.safeEval("service:log('hello from lua')", "init");
         setSelf(t);
     }
 }

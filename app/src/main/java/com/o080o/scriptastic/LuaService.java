@@ -17,14 +17,22 @@ import android.os.StrictMode;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
+
+
+
 import org.keplerproject.luajava.JavaFunction;
 import org.keplerproject.luajava.LuaException;
 import org.keplerproject.luajava.LuaObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Scanner;
 
 /**
  * Created by o080o on 3/30/16.
@@ -33,6 +41,8 @@ public class LuaService extends Service {
     public LuaVM lua;
     public int notificationId=1;
     private Server server;
+    private ArrayList<String> packagePath = new ArrayList<String>();
+    private Handler handler;
 
     public class LuaBinder extends Binder{
         public LuaObject eval(String src, String chunk){
@@ -40,9 +50,12 @@ public class LuaService extends Service {
             return LuaService.this.lua.safeEval(src,chunk);
         }
         public LuaVM getLuaVM(){return LuaService.this.lua;}
+        public LuaService getService(){return LuaService.this;}
         public void startServer(int port){
-            server = new Server(LuaService.this, LuaService.this.lua, port);
-            server.start();
+            if(server==null || !server.running) {
+                server = new Server(LuaService.this, LuaService.this.lua, port);
+                server.start();
+            }
         }
         public void stopServer(){server.close();}
     }
@@ -52,11 +65,8 @@ public class LuaService extends Service {
     public void onCreate () {
         StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.LAX);
         Log.d("scriptastic", "starting Lua service");
-        lua = new LuaVM();
-        lua.addPackagePath(this.getFilesDir().getAbsolutePath());
-        lua.addAssets(this.getAssets());
-        lua.setGlobal("service", this);
-        lua.setGlobal("context", this);
+        handler = new Handler(this.getMainLooper());
+        resetVM();
     }
 
     @Override
@@ -69,14 +79,44 @@ public class LuaService extends Service {
         return START_NOT_STICKY;
     }
 
-    public void log(String str){Log.d("lua", str);}
-
 
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
     }
 
+    //public functions for use in lua code...
+    public void log(String str){Log.d("lua", str);}
     public String stash(LuaObject obj, String key){return lua.stash(obj, key);}
+    public int getRef(LuaObject obj){return obj.getRef();}
+    public void releaseRef(int ref){lua.releaseRef(ref);}
+    public void post(Runnable task, long time){handler.postDelayed(task, time);}
+    public void post(Runnable task){handler.post(task);}
+    public void post(final LuaObject task){
+        post(new Runnable() {
+            @Override
+            public void run() {
+                lua.safeEval(task);
+            }
+        });
+    }
+    public void post(final LuaObject task, long time){
+        post(new Runnable() {
+            @Override
+            public void run() {
+                lua.safeEval(task);
+            }
+        }, time);
+    }
+
+    //provide some access to the VM. **ONLY ACCESSIBLE WITHIN THIS PACKAGE** for security.
+    // we don't want arbitrary code resetting our VM.
+    void resetVM(){
+        lua = new LuaVM();
+        lua.addPackagePath(this.getFilesDir().getAbsolutePath());
+        lua.addAssets(this.getAssets());
+        lua.setGlobal("service", this); //would rather not expose the service... or make the service interface non-privledged.
+        //lua.setGlobal("context", R.mipmap.ic_launcher);
+    }
 
 }

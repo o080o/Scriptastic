@@ -397,7 +397,21 @@ public class LuaObject
 	 */
 	public LuaObject getField(String field) throws LuaException
 	{
-		return L.getLuaObject(this, field);
+		synchronized (L) {
+			return L.getLuaObject(this, field);
+		}
+	}
+
+	/**
+	 * if <code>this</code> is a table then try to set a field
+	 */
+	public void setField(String field, Object value) throws LuaException
+	{
+		synchronized (L) {
+			L.pushObjectValue(this);
+			L.pushObjectValue(value);
+			L.setField(-2, field);
+		}
 	}
 
 	/**
