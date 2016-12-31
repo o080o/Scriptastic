@@ -97,7 +97,7 @@ public class LuaActivity extends Activity implements ServiceConnection{
 
     @Override
     public void onNewIntent(Intent intent){
-        if (lua != null){ lua.invokeMethod(self, "onNewIntent"); }
+        if (lua != null){ lua.invokeMethod(self, "onNewIntent", intent); }
     }
 
     @Override
